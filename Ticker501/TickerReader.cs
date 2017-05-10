@@ -15,26 +15,34 @@ namespace Ticker501
             List<Ticker> tickers = new List<Ticker>();
             Dictionary<Ticker, decimal> tickerPrices = new Dictionary<Ticker, decimal>();
 
-            using (StreamReader file = new StreamReader(fileName))
+            try
             {
-                string line = file.ReadLine();
-                while (line != null)
+                using (StreamReader file = new StreamReader(fileName))
                 {
-                    string[] lineSplitup = line.Split('-');
-                    if (lineSplitup.Length == 3)
+                    string line = file.ReadLine();
+                    while (line != null)
                     {
-                        string tickerSymbol = lineSplitup[0];
-                        string tickerName = lineSplitup[1];
-                        decimal tickerPrice = Convert.ToDecimal(lineSplitup[2].Substring(1));
+                        string[] lineSplitup = line.Split('-');
+                        if (lineSplitup.Length == 3)
+                        {
+                            string tickerSymbol = lineSplitup[0];
+                            string tickerName = lineSplitup[1];
+                            decimal tickerPrice = Convert.ToDecimal(lineSplitup[2].Substring(1));
 
-                        Ticker ticker = new Ticker(tickerSymbol, tickerName);
-                        tickerPrices.Add(ticker, tickerPrice);
+                            Ticker ticker = new Ticker(tickerSymbol, tickerName);
+                            tickerPrices.Add(ticker, tickerPrice);
+                        }
+
+                        line = file.ReadLine();
                     }
-
-                    line = file.ReadLine();
                 }
+                return new Tuple<List<Ticker>, Dictionary<Ticker, decimal>>(tickers, tickerPrices);
             }
-            return new Tuple<List<Ticker>, Dictionary<Ticker, decimal>>(tickers, tickerPrices);
+            catch
+            {
+                Console.WriteLine("Sorry, that file wasn't found. Quiting now");
+                return null;
+            }
         }
     }
 }
