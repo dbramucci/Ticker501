@@ -19,7 +19,7 @@ namespace Ticker501
 
         public override string ToString()
         {
-            return string.Format("Ticker({0}, {1})", symbol, name);
+            return string.Format("{0} - {1}", symbol, name);
         }
 
         public override bool Equals(Object obj)

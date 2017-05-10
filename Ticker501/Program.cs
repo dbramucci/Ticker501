@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -39,6 +40,7 @@ namespace Ticker501
                 "Sell Stocks",
                 "Create Portfolio",
                 "Delete Portfolio",
+                "Simulate Market",
                 "Quit"
             };
             while (true)
@@ -70,7 +72,11 @@ namespace Ticker501
                 }
                 else if (choice == 5)
                 {
-                    SellStock();
+                    Portfolio portfolio = ChoosePortfolio(mainAccount);
+                    if (portfolio != null)
+                    {
+                        SellStock(mainAccount, portfolio, prices, tickers);
+                    }
                 }
                 else if (choice == 6)
                 {
@@ -81,6 +87,10 @@ namespace Ticker501
                     DeletePortfolio(mainAccount, prices);
                 }
                 else if (choice == 8)
+                {
+                    prices = SimulateMarket(prices);
+                }
+                else if (choice == 9)
                 {
                     break;
                 }
@@ -109,6 +119,7 @@ namespace Ticker501
                 }
                 catch
                 {
+                    Console.WriteLine($"I could not find a portfolio by the name \"{portfolioName}\"");
                     return null;
                 }
             }
@@ -280,9 +291,9 @@ namespace Ticker501
         private static void BuyStock(Account account, List<Ticker> tickers, Dictionary<Ticker, decimal> prices)
         {
             
-            Portfolio name = ChoosePortfolio(account);
+            Portfolio portfolio = ChoosePortfolio(account);
 
-            if (name == null)
+            if (portfolio == null)
             {
                 return;
             }
@@ -292,11 +303,11 @@ namespace Ticker501
             {
                 Console.Write("Ticker name/symbol: ");
                 string tickerNameOrSymbol = Console.ReadLine();
-                for (int i = 0; i < tickers.Count && ticker == null ; i++)
+                foreach (Ticker t in tickers)
                 {
-                    if (tickers[i].symbol.Trim() == tickerNameOrSymbol.Trim() || tickers[i].name.Trim() == tickerNameOrSymbol.Trim())
+                    if (t.symbol.Trim() == tickerNameOrSymbol.Trim() || t.name.Trim() == tickerNameOrSymbol.Trim())
                     {
-                        ticker = tickers[i];
+                        ticker = t;
                         break;
                     }
                 }
@@ -305,12 +316,75 @@ namespace Ticker501
                     Console.WriteLine("Error, could not find ticker with name or symbol {0}", tickerNameOrSymbol);
                 }
             }
-            throw new NotImplementedException();
+            int quantity;
+            try
+            {
+                Console.WriteLine("How many of this stock would you like to buy");
+                quantity = Convert.ToInt32(Console.ReadLine());
+            }
+            catch (FormatException)
+            {
+                Console.WriteLine("Sorry, That isn't a valid number, returning to main menu.");
+                return;
+            }
+
+            try
+            {
+                decimal cost = account.BuyStocks(portfolio, quantity, ticker, prices);
+                Console.WriteLine($"That costed you {cost:C}, your current balance is {account.MakeReport(prices).currentBalance:C}");
+            }
+            catch (InsufficientFundsException)
+            {
+                Console.WriteLine("You have insufficient funds to buy those stocks.");
+            }
         }
 
-        private static void SellStock()
+        private static void SellStock(Account account, Portfolio portfolio, Dictionary<Ticker, decimal> prices, List<Ticker> tickers)
         {
+            if (portfolio == null)
+            {
+                return;
+            }
 
+            Ticker ticker = null;
+            while (ticker == null)
+            {
+                Console.Write("Ticker name/symbol: ");
+                string tickerNameOrSymbol = Console.ReadLine();
+                foreach (Ticker t in tickers)
+                {
+                    if (t.symbol.Trim() == tickerNameOrSymbol.Trim() || t.name.Trim() == tickerNameOrSymbol.Trim())
+                    {
+                        ticker = t;
+                        break;
+                    }
+                }
+                if (ticker == null)
+                {
+                    Console.WriteLine("Error, could not find ticker with name or symbol {0}", tickerNameOrSymbol);
+                }
+            }
+            int quantity;
+            try
+            {
+                Console.WriteLine("How many of this stock would you like to sell");
+                quantity = Convert.ToInt32(Console.ReadLine());
+            }
+            catch (FormatException)
+            {
+                Console.WriteLine("Sorry, That isn't a valid number, returning to main menu.");
+                return;
+            }
+
+            try
+            {
+                decimal earnings = account.SellStocks(portfolio, quantity, ticker, prices);
+                Console.WriteLine($"That earned you {earnings:C}, your current balance is {account.MakeReport(prices).currentBalance:C}");
+            }
+            catch (InsufficientStocksException)
+            {
+                Console.WriteLine("You don't have enough of that stock.");
+            }
         }
 
         private static void MakePortfolio(Account account)
@@ -324,6 +398,11 @@ namespace Ticker501
             catch (TooManyPortfoliosException)
             {
                 Console.WriteLine("Sorry, you have too many portfolios to add a new portfolio.");
+                Console.WriteLine("Adding new Portfolio has been aborted");
+            }
+            catch (NonUniquePortfolioNameException)
+            {
+                Console.WriteLine($"Sorry, you already have a portfolio with the name \"{name}\".");
                 Console.WriteLine("Adding new Portfolio has been aborted");
             }
         }
@@ -344,6 +423,45 @@ namespace Ticker501
             {
                 Console.WriteLine("Sorry, I could find any portfolios with the name: {0}", name);
             }
+        }
+
+        private static Dictionary<Ticker, decimal> SimulateMarket(Dictionary<Ticker, decimal> prices)
+        {
+            Console.WriteLine("Select a volitility");
+            string[] options = new[]
+            {
+                "High Volatility (3%-15%)",
+                "Medium Volatility (2%-8%)",
+                "Low Volatility (1%-4%)"
+            };
+            int choice = DisplayMenu(options);
+            decimal low = 0m;
+            decimal high = 0m;
+            switch (choice)
+            {
+                case 0:
+                    low = 0.03m;
+                    high = 0.15m;
+                    break;
+                case 1:
+                    low = 0.02m;
+                    high = 0.08m;
+                    break;
+                case 2:
+                    low = 0.1m;
+                    high = 0.04m;
+                    break;
+            }
+
+            Random rng = new Random();
+            var new_prices = new Dictionary<Ticker, decimal>();
+            foreach (Ticker tick in prices.Keys)
+            {
+                int inc = Math.Round(rng.NextDouble()) == 1 ? -1 : 1;
+                decimal amount = (Decimal) rng.NextDouble() * (high - low) + low;
+                new_prices[tick] = prices[tick] + inc * amount;
+            }
+            return new_prices;
         }
     }
 }

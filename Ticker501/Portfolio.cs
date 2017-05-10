@@ -58,6 +58,59 @@ namespace Ticker501
             return realizedGains;
         }
 
+        /// <summary>
+        /// Adds purchase to stock history.
+        /// </summary>
+        /// <param name="tick"> The ticker of the stock purchase. </param>
+        /// <param name="quantity"> The quantity of the stock to buy. </param>
+        /// <param name="prices"> The price of the stock. </param>
+        public void BuyStock(Ticker tick, int quantity, Dictionary<Ticker, decimal> prices)
+        {
+            StockCollection purchase = new StockCollection(tick, quantity, prices[tick]);
+            stocks.Add(purchase);
+        }
+
+        /// <summary>
+        /// Attempts to sell stocks from the portfolio.
+        /// </summary>
+        /// <exception cref="InsufficientStocksException"> Thrown if there aren't enough stocks to sell. </exception>
+        /// <param name="tick"></param>
+        /// <param name="quantity"></param>
+        /// <param name="prices"></param>
+        /// <returns></returns>
+        public decimal SellStock(Ticker tick, int quantity, Dictionary<Ticker, decimal> prices)
+        {
+            if (stocks.Where(x => x.stockTicker.name == tick.name).Sum(x => x.quantity) < quantity)
+            {
+                throw new InsufficientStocksException();
+            }
+
+            decimal gains = 0m;
+            int i = 0;
+
+            while (quantity > 0)
+            {
+                if (stocks[i].stockTicker.name != tick.name)
+                {
+                    i++;
+                }
+                if (stocks[i].quantity <= quantity)
+                {
+                    quantity -= stocks[i].quantity;
+                    gains += (prices[tick] - stocks[i].priceAtPurchase) * stocks[i].quantity;
+                    stocks.RemoveAt(i); // No need to increment i
+                }
+                else
+                {
+                    int newQuantity = stocks[i].quantity - quantity;
+                    gains += (prices[tick] - stocks[i].priceAtPurchase) * quantity;
+                    stocks[i] = new StockCollection(stocks[i].stockTicker, newQuantity, stocks[i].priceAtPurchase);
+                }
+            }
+            realizedGains += gains;
+            return gains;
+        }
+
         public PortfolioReport MakeReport(Dictionary<Ticker, decimal> prices)
         {
             decimal cost = stocks.Select(x => x.priceAtPurchase * x.quantity).Sum();

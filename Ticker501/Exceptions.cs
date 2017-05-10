@@ -11,4 +11,5 @@ namespace Ticker501
     class TooFewPortfoliosException : Ticker501Exception { }
     class NonUniquePortfolioNameException : Ticker501Exception { }
     class InsufficientFundsException : Ticker501Exception { }
+    class InsufficientStocksException : Ticker501Exception { }
 }

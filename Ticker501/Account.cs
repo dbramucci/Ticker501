@@ -72,7 +72,12 @@ namespace Ticker501
             {
                 throw new ArgumentException("Name not in portfolios");
             }
+            decimal old = realizedGains;
             realizedGains += portfolioToRemove.Cleanup(stockPrices);
+            if (old != realizedGains)
+            {
+                _tradeFees += TRADE_FEE;
+            }
             Portfolios.Remove(portfolioToRemove);
         }
 
@@ -83,6 +88,7 @@ namespace Ticker501
         public void AddFunds(decimal additionalFunds)
         {
             _balance += additionalFunds;
+            _balance -= TRANSFER_FEE;
             _transferFees += TRANSFER_FEE;
         }
 
@@ -105,10 +111,37 @@ namespace Ticker501
         /// <summary>
         /// Buys stocks
         /// </summary>
-        /// <returns></returns>
-        public decimal BuyStocks()
+        /// <exception cref="InsufficientFundsException"> Raised if user can't afford stocks. </exception>
+        /// <returns> The cost. </returns>
+        public decimal BuyStocks(Portfolio portfolio, int quantity, Ticker tick, Dictionary<Ticker, decimal> prices)
         {
-            return 0m;
+            decimal cost = prices[tick] * quantity + TRADE_FEE;
+            if (_balance > cost)
+            {
+                _tradeFees += TRADE_FEE;
+                _balance -= cost;
+                portfolio.BuyStock(tick, quantity, prices);
+            }
+            else
+            {
+                throw new InsufficientFundsException();
+            }
+            return cost;
+        }
+
+        /// <summary>
+        /// Sells stocks
+        /// </summary>
+        /// <exception cref="InsufficientStocksException"> Raised if user doesn't have enough stocks. </exception>
+        /// <returns> The cost. </returns>
+        public decimal SellStocks(Portfolio portfolio, int quantity, Ticker tick, Dictionary<Ticker, decimal> prices)
+        {
+            _tradeFees += TRADE_FEE;
+            _balance -= TRADE_FEE;
+            decimal profit = portfolio.SellStock(tick, quantity, prices);
+            realizedGains += profit - TRADE_FEE;
+            _balance += profit;
+            return profit;
         }
 
         /// <summary>
@@ -117,7 +150,7 @@ namespace Ticker501
         /// <returns> The report of the account. </returns>
         public AccountReport MakeReport(Dictionary<Ticker, decimal> prices)
         {
-            decimal projectedGains = 0m;
+            decimal projectedGains = Portfolios.SelectMany(x => x.stocks).Sum(x => (prices[x.stockTicker] - x.priceAtPurchase) * x.quantity);
 
             decimal stockValueSum =
                 Portfolios.SelectMany(x => x.stocks.Select(y => y.quantity * prices[y.stockTicker])).Sum();
@@ -147,7 +180,7 @@ namespace Ticker501
             {
                 decimal value = port.Value(prices);
                 portfolioValues[port.Name] = value;
-                if (totalPortfolioValue == 0m)
+                if (totalPortfolioValue != 0m)
                 {
                     portfolioPercentages[port.Name] = value / totalPortfolioValue;
                 }

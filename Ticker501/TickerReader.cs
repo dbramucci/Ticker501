@@ -11,8 +11,7 @@ namespace Ticker501
     {
         public static Tuple<List<Ticker>, Dictionary<Ticker, decimal>> ReadTickerFile(string fileName)
         {
-
-            List<Ticker> tickers = new List<Ticker>();
+            
             Dictionary<Ticker, decimal> tickerPrices = new Dictionary<Ticker, decimal>();
 
             try
@@ -36,7 +35,7 @@ namespace Ticker501
                         line = file.ReadLine();
                     }
                 }
-                return new Tuple<List<Ticker>, Dictionary<Ticker, decimal>>(tickers, tickerPrices);
+                return new Tuple<List<Ticker>, Dictionary<Ticker, decimal>>(tickerPrices.Keys.ToList(), tickerPrices);
             }
             catch
             {
