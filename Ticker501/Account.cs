@@ -23,6 +23,12 @@ namespace Ticker501
 
         }
 
+        /// <summary>
+        /// Adds a portfolio to the account with the name name.
+        /// </summary>
+        /// <exception cref="TooManyPortfoliosException"></exception>
+        /// <exception cref="NonUniquePortfolioNameException"></exception>
+        /// <param name="name"> The name of the new portfolio. (Must be unique) </param>
         public void AddPortfolio(string name)
         {
             if (_portfolios.Count >= MAX_NUMBER_OF_PORTFOLIOS)
@@ -39,6 +45,13 @@ namespace Ticker501
             _portfolios.Add(newPortfolio);
         }
 
+        /// <summary>
+        /// Deletes a portfolio
+        /// </summary>
+        /// <exception cref="TooFewPortfoliosException"> If there are zero porfolios this exception is thrown. </exception>
+        /// <exception cref="ArgumentException"> If the name doesn't match and portfolios this is thrown. </exception>
+        /// <param name="name"> The portfolio to delete. </param>
+        /// <param name="stockPrices"> The current stock prices. </param>
         public void DeletePortfolio(string name, Dictionary<Ticker, decimal> stockPrices)
         {
             if (_portfolios.Count <= 0)
@@ -60,6 +73,41 @@ namespace Ticker501
             }
             realizedGains += portfolioToRemove.Cleanup(stockPrices);
             _portfolios.Remove(portfolioToRemove);
+        }
+
+        /// <summary>
+        /// Adds additionalFunds to the account.
+        /// </summary>
+        /// <param name="additionalFunds"> The amount being transferred in. </param>
+        public void AddFunds(decimal additionalFunds)
+        {
+            _balance += additionalFunds;
+            _transferFees += TRANSFER_FEE;
+        }
+
+        /// <summary>
+        /// Withdraw a certain amount of funds from the account. 
+        /// </summary>
+        /// <exception cref="InsufficientFundsException"> Thrown if the user doesn't have enogh money to withdraw. </exception>
+        /// <param name="withdrawAmount"> The amount to withdraw. </param>
+        public void Withdrawfunds(decimal withdrawAmount)
+        {
+            decimal cost = withdrawAmount + TRANSFER_FEE;
+            if (_balance < cost)
+            {
+                throw new InsufficientFundsException();
+            }
+            _balance -= cost;
+            _transferFees += TRANSFER_FEE;
+        }
+
+        /// <summary>
+        /// Buys stocks
+        /// </summary>
+        /// <returns></returns>
+        public decimal BuyStocks()
+        {
+            return 0m;
         }
 
         public override string ToString()
